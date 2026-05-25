@@ -4,10 +4,16 @@ const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 
 dotenv.config();
-const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/luxestay';
+const localMongoUri = 'mongodb://localhost:27017/luxestay';
+const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || localMongoUri;
 const port = process.env.PORT || 4000;
+const isVercel = Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production');
 
 mongoose.set('strictQuery', false);
+
+if (isVercel && !process.env.MONGO_URI && !process.env.MONGODB_URI) {
+  console.error('Missing MongoDB connection string on Vercel. Set MONGO_URI or MONGODB_URI in Vercel environment variables.');
+}
 
 const app = express();
 app.use(cors());
@@ -584,7 +590,7 @@ app.use((req, res) => {
 });
 
 mongoose
-  .connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(mongoUri)
   .then(() => {
     console.log('MongoDB connected');
     if (!process.env.VERCEL) {
