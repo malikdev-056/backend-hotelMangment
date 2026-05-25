@@ -587,10 +587,14 @@ mongoose
   .connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
     console.log('MongoDB connected');
-    app.listen(port, () => {
-      console.log(`LuxeStay backend running on http://localhost:${port}`);
-    });
+    if (!process.env.VERCEL) {
+      app.listen(port, () => {
+        console.log(`LuxeStay backend running on http://localhost:${port}`);
+      });
+    }
   })
   .catch(error => {
     console.error('MongoDB connection failed:', error.message);
   });
+
+module.exports = app;
