@@ -10,6 +10,7 @@ const port = process.env.PORT || 4000;
 const isVercel = Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production');
 
 mongoose.set('strictQuery', false);
+mongoose.set('bufferCommands', false);
 
 if (isVercel && !process.env.MONGO_URI && !process.env.MONGODB_URI) {
   console.error('Missing MongoDB connection string on Vercel. Set MONGO_URI or MONGODB_URI in Vercel environment variables.');
@@ -590,7 +591,12 @@ app.use((req, res) => {
 });
 
 mongoose
-  .connect(mongoUri)
+  .connect(mongoUri, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    family: 4,
+  })
   .then(() => {
     console.log('MongoDB connected');
     if (!process.env.VERCEL) {
