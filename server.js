@@ -10,7 +10,6 @@ const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || (isVercel ?
 const port = process.env.PORT || 4000;
 
 mongoose.set('strictQuery', false);
-mongoose.set('bufferCommands', false);
 
 if (isVercel && !mongoUri) {
   console.error('Missing MongoDB connection string on Vercel. Set MONGO_URI or MONGODB_URI in Vercel environment variables.');
@@ -19,6 +18,25 @@ if (isVercel && !mongoUri) {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const dbConnectPromise = mongoUri
+  ? mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4,
+    })
+  : Promise.reject(new Error('No MongoDB URI provided'));
+
+app.use(async (req, res, next) => {
+  try {
+    await dbConnectPromise;
+    next();
+  } catch (error) {
+    console.error('Database connection failed while handling request:', error.message);
+    return res.status(500).json({ error: 'Database connection failed: ' + error.message });
+  }
+});
 
 const fmt = d => d.toISOString().split('T')[0];
 const todayStr = () => fmt(new Date());
@@ -590,27 +608,17 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-if (!mongoUri) {
-  console.error('MongoDB connection string is missing. Backend will not start without MONGO_URI or MONGODB_URI.');
-} else {
-  mongoose
-    .connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      family: 4,
-    })
-    .then(() => {
-      console.log('MongoDB connected');
-      if (!process.env.VERCEL) {
-        app.listen(port, () => {
-          console.log(`LuxeStay backend running on http://localhost:${port}`);
-        });
-      }
-    })
-    .catch(error => {
-      console.error('MongoDB connection failed:', error.message);
-    });
-}
+dbConnectPromise
+  .then(() => {
+    console.log('MongoDB connected');
+    if (!process.env.VERCEL) {
+      app.listen(port, () => {
+        console.log(`LuxeStay backend running on http://localhost:${port}`);
+      });
+    }
+  })
+  .catch(error => {
+    console.error('MongoDB connection failed:', error.message);
+  });
 
 module.exports = app;
