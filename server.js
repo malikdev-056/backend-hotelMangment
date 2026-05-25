@@ -15,6 +15,9 @@ if (isVercel && !mongoUri) {
   console.error('Missing MongoDB connection string on Vercel. Set MONGO_URI or MONGODB_URI in Vercel environment variables.');
 }
 
+console.log(`MongoDB configured: ${Boolean(mongoUri) ? 'yes' : 'no'}`);
+if (mongoUri) console.log('Attempting MongoDB connection...');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -619,6 +622,7 @@ dbConnectPromise
   })
   .catch(error => {
     console.error('MongoDB connection failed:', error.message);
+    console.error('If using MongoDB Atlas, make sure IP access is enabled for Vercel or use 0.0.0.0/0 while testing.');
   });
 
 module.exports = app;
