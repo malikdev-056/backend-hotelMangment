@@ -5,14 +5,14 @@ const mongoose = require('mongoose');
 
 dotenv.config();
 const localMongoUri = 'mongodb://localhost:27017/luxestay';
-const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || localMongoUri;
-const port = process.env.PORT || 4000;
 const isVercel = Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production');
+const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || (isVercel ? null : localMongoUri);
+const port = process.env.PORT || 4000;
 
 mongoose.set('strictQuery', false);
 mongoose.set('bufferCommands', false);
 
-if (isVercel && !process.env.MONGO_URI && !process.env.MONGODB_URI) {
+if (isVercel && !mongoUri) {
   console.error('Missing MongoDB connection string on Vercel. Set MONGO_URI or MONGODB_URI in Vercel environment variables.');
 }
 
@@ -590,23 +590,27 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-mongoose
-  .connect(mongoUri, {
-    serverSelectionTimeoutMS: 5000,
-    connectTimeoutMS: 10000,
-    socketTimeoutMS: 45000,
-    family: 4,
-  })
-  .then(() => {
-    console.log('MongoDB connected');
-    if (!process.env.VERCEL) {
-      app.listen(port, () => {
-        console.log(`LuxeStay backend running on http://localhost:${port}`);
-      });
-    }
-  })
-  .catch(error => {
-    console.error('MongoDB connection failed:', error.message);
-  });
+if (!mongoUri) {
+  console.error('MongoDB connection string is missing. Backend will not start without MONGO_URI or MONGODB_URI.');
+} else {
+  mongoose
+    .connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4,
+    })
+    .then(() => {
+      console.log('MongoDB connected');
+      if (!process.env.VERCEL) {
+        app.listen(port, () => {
+          console.log(`LuxeStay backend running on http://localhost:${port}`);
+        });
+      }
+    })
+    .catch(error => {
+      console.error('MongoDB connection failed:', error.message);
+    });
+}
 
 module.exports = app;
